@@ -17,6 +17,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Setup Gradle 8.4
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.4'
+
       - name: Create local.properties
         working-directory: android
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -43,15 +48,9 @@ jobs:
             cp icon.png android/app/src/main/res/mipmap-$density/ic_launcher_round.png
           done
 
-      - name: Setup Gradle wrapper
-        working-directory: android
-        run: gradle wrapper --gradle-version 8.4 --distribution-type bin
-
       - name: Build release APK
         working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+        run: gradle assembleRelease --no-daemon
         env:
           KEYSTORE_PASS: mediship123
           KEY_PASS: mediship123
@@ -72,8 +71,8 @@ jobs:
 
             **Install instructions:**
             1. On your Android phone, go to Settings → Security → enable "Install from unknown sources"
-            2. Download the APK file below
-            3. Open the downloaded APK and tap Install
+            2. Download `app-release.apk` below
+            3. Open the downloaded file and tap Install
           files: android/app/build/outputs/apk/release/app-release.apk
           make_latest: true
         env:
