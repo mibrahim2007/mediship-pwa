@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.mediship.pwa'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.mediship.pwa"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../mediship.keystore')
+            storePassword System.getenv('KEYSTORE_PASS') ?: 'mediship123'
+            keyAlias 'mediship'
+            keyPassword System.getenv('KEY_PASS') ?: 'mediship123'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
