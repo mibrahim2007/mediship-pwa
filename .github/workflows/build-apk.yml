@@ -1,0 +1,90 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Generate signing keystore
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore mediship.keystore \
+            -alias mediship \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass mediship123 \
+            -keypass mediship123 \
+            -dname "CN=MediShip, OU=Mobile, O=MediShip, L=Karachi, S=Sindh, C=PK"
+
+      - name: Init Bubblewrap project
+        run: |
+          bubblewrap init \
+            --manifest https://mediship-pwa.vercel.app/manifest.webmanifest \
+            --directory twa-project
+        env:
+          BUBBLEWRAP_SKIP_UPDATE_CHECK: "true"
+
+      - name: Patch twa-manifest for keystore
+        working-directory: twa-project
+        run: |
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('twa-manifest.json','utf8'));
+            m.signingKey = {
+              path: '../mediship.keystore',
+              alias: 'mediship'
+            };
+            m.packageId = 'com.mediship.pwa';
+            fs.writeFileSync('twa-manifest.json', JSON.stringify(m, null, 2));
+          "
+
+      - name: Build APK
+        working-directory: twa-project
+        run: |
+          bubblewrap build \
+            --skipPwaValidation
+        env:
+          BUBBLEWRAP_KEYSTORE_PASS: mediship123
+          BUBBLEWRAP_KEY_PASS: mediship123
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediship-pwa-apk
+          path: twa-project/app-release-signed.apk
+          if-no-files-found: warn
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: MediShip Android APK
+          body: |
+            MediShip PWA packaged as a native Android APK via Trusted Web Activity.
+            Install on any Android device (enable "Install from unknown sources" in settings).
+          files: twa-project/app-release-signed.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
